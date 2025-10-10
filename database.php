@@ -29,6 +29,9 @@ class UserDatabase {
             // Créer la table users si elle n'existe pas
             $this->createUsersTable();
 
+            // Créer la table d'historique des imports
+            $this->createImportHistoryTable();
+
             // Créer l'utilisateur admin par défaut s'il n'existe pas
             $this->createDefaultAdmin();
 
@@ -49,6 +52,28 @@ class UserDatabase {
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             last_login DATETIME NULL,
             is_active BOOLEAN DEFAULT 1
+        )";
+        
+        $this->pdo->exec($sql);
+    }
+
+    /**
+     * Créer la table d'historique des imports
+     */
+    private function createImportHistoryTable() {
+        $sql = "CREATE TABLE IF NOT EXISTS import_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            username VARCHAR(50) NOT NULL,
+            script_name VARCHAR(100) NOT NULL,
+            arguments TEXT,
+            output TEXT,
+            success BOOLEAN NOT NULL,
+            server_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+            import_date DATE,
+            group_id VARCHAR(20),
+            action_type VARCHAR(20) DEFAULT 'execute',
+            FOREIGN KEY (user_id) REFERENCES users(id)
         )";
         
         $this->pdo->exec($sql);
@@ -209,6 +234,114 @@ class UserDatabase {
             return $stmt->fetch(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
             error_log('Erreur lors de la récupération des infos utilisateur : ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Enregistrer un entry d'historique d'import
+     */
+    public function saveImportHistory($userId, $username, $scriptName, $arguments, $output, $success, $importDate = null, $groupId = null, $actionType = 'execute') {
+        try {
+            $stmt = $this->pdo->prepare("
+                INSERT INTO import_history 
+                (user_id, username, script_name, arguments, output, success, import_date, group_id, action_type) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ");
+            
+            return $stmt->execute([
+                $userId,
+                $username,
+                $scriptName,
+                $arguments,
+                $output,
+                $success ? 1 : 0,
+                $importDate,
+                $groupId,
+                $actionType
+            ]);
+        } catch (PDOException $e) {
+            error_log('Erreur lors de l\'enregistrement de l\'historique : ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Récupérer l'historique des imports
+     */
+    public function getImportHistory($limit = 50) {
+        try {
+            $stmt = $this->pdo->prepare("
+                SELECT 
+                    id,
+                    user_id,
+                    username,
+                    script_name,
+                    arguments,
+                    output,
+                    success,
+                    server_date,
+                    import_date,
+                    group_id,
+                    action_type
+                FROM import_history 
+                ORDER BY server_date DESC 
+                LIMIT ?
+            ");
+            
+            $stmt->execute([$limit]);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            error_log('Erreur lors de la récupération de l\'historique : ' . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * Récupérer l'historique des imports d'un utilisateur spécifique
+     */
+    public function getImportHistoryByUser($userId, $limit = 50) {
+        try {
+            $stmt = $this->pdo->prepare("
+                SELECT 
+                    id,
+                    user_id,
+                    username,
+                    script_name,
+                    arguments,
+                    output,
+                    success,
+                    server_date,
+                    import_date,
+                    group_id,
+                    action_type
+                FROM import_history 
+                WHERE user_id = ?
+                ORDER BY server_date DESC 
+                LIMIT ?
+            ");
+            
+            $stmt->execute([$userId, $limit]);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            error_log('Erreur lors de la récupération de l\'historique utilisateur : ' . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * Supprimer les anciens enregistrements d'historique (plus de X jours)
+     */
+    public function cleanOldHistory($days = 90) {
+        try {
+            $stmt = $this->pdo->prepare("
+                DELETE FROM import_history 
+                WHERE server_date < datetime('now', '-' || ? || ' days')
+            ");
+            
+            return $stmt->execute([$days]);
+        } catch (PDOException $e) {
+            error_log('Erreur lors du nettoyage de l\'historique : ' . $e->getMessage());
             return false;
         }
     }

@@ -16,17 +16,18 @@ checkSessionTimeout(); // Vérifier le timeout de session
 <body>
     <div class="container-fluid">
         <div class="row">
-            <!-- Sidebar -->
-            <nav class="col-md-3 col-lg-2 d-md-block bg-light sidebar">
-                <div class="position-sticky pt-3">
-                    <h4 class="text-center mb-4">
-                        <i class="fas fa-file-import text-primary"></i> Import
-                    </h4>
-                    
-                    <!-- User info and logout -->
-                    <div class="user-info mb-3 p-2 bg-white rounded">
-                        <div class="d-flex align-items-center justify-content-between">
-                            <small class="text-muted">
+            <!-- Mobile toggle button -->
+            <div class="d-md-none">
+                <nav class="navbar navbar-light bg-light">
+                    <div class="container-fluid">
+                        <button class="navbar-toggler" type="button" id="sidebarToggle" aria-expanded="false" aria-label="Toggle navigation">
+                            <span class="navbar-toggler-icon"></span>
+                        </button>
+                        <span class="navbar-brand mb-0 h1">
+                            <i class="fas fa-file-import text-primary"></i> Import
+                        </span>
+                        <div class="d-flex align-items-center">
+                            <small class="text-muted me-2">
                                 <i class="fas fa-user me-1"></i>
                                 <?php echo htmlspecialchars(getUsername()); ?>
                             </small>
@@ -35,22 +36,47 @@ checkSessionTimeout(); // Vérifier le timeout de session
                             </a>
                         </div>
                     </div>
+                </nav>
+            </div>
+
+            <!-- Sidebar -->
+            <nav id="sidebar" class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse">
+                <div class="position-sticky pt-3">
+                    <!-- Desktop header - hidden on mobile -->
+                    <div class="d-none d-md-block">
+                        <h4 class="text-center mb-4">
+                            <i class="fas fa-file-import text-primary"></i> Import
+                        </h4>
+                        
+                        <!-- User info and logout -->
+                        <div class="user-info mb-3 p-2 bg-white rounded">
+                            <div class="d-flex align-items-center justify-content-between">
+                                <small class="text-muted">
+                                    <i class="fas fa-user me-1"></i>
+                                    <?php echo htmlspecialchars(getUsername()); ?>
+                                </small>
+                                <a href="?logout=1" class="btn btn-sm btn-outline-danger" title="Déconnexion">
+                                    <i class="fas fa-sign-out-alt"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
                     
                     <ul class="nav flex-column">
                         <li class="nav-item">
                             <a class="nav-link active" href="#" data-section="execute">
-                                <i class="fas fa-play"></i> Importer Données
+                                <i class="fas fa-play"></i> <span class="nav-text">Importer Données</span>
                             </a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" href="#" data-section="history">
-                                <i class="fas fa-history"></i> Historique
+                                <i class="fas fa-history"></i> <span class="nav-text">Historique</span>
                             </a>
                         </li>
                         <?php if (isAdmin()): ?>
                         <li class="nav-item">
                             <a class="nav-link" href="admin.php" data-section="admin">
-                                <i class="fas fa-users-cog"></i> Administration
+                                <i class="fas fa-users-cog"></i> <span class="nav-text">Administration</span>
                             </a>
                         </li>
                         <?php endif; ?>
@@ -59,13 +85,13 @@ checkSessionTimeout(); // Vérifier le timeout de session
             </nav>
 
             <!-- Main content -->
-            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 main-content">
                 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                     <h1 class="h2">Importation des données</h1>
                     <div class="btn-toolbar mb-2 mb-md-0">
                         <div class="btn-group me-2">
                             <button type="button" class="btn btn-sm btn-outline-secondary" onclick="clearOutput()">
-                                <i class="fas fa-trash"></i> Vider
+                                <i class="fas fa-trash"></i> <span class="d-none d-sm-inline">Vider</span>
                             </button>
                         </div>
                     </div>
@@ -96,16 +122,55 @@ checkSessionTimeout(); // Vérifier le timeout de session
                                         </div>
 
                                         <div class="mb-4">
-                                            <label for="dateInput" class="form-label fw-bold">
-                                                <i class="fas fa-calendar-alt text-danger me-2"></i>Date d'import
+                                            <label class="form-label fw-bold">
+                                                <i class="fas fa-calendar-alt text-danger me-2"></i>Période d'import
                                             </label>
-                                            <input type="date" class="form-control form-control-lg" id="dateInput" name="date" required>
+                                            
+                                            <!-- Type de sélection de date -->
+                                            <div class="mb-3">
+                                                <div class="form-check form-check-inline">
+                                                    <input class="form-check-input" type="radio" name="dateType" id="singleDate" value="single" checked>
+                                                    <label class="form-check-label" for="singleDate">
+                                                        <i class="fas fa-calendar-day me-1"></i>Date unique
+                                                    </label>
+                                                </div>
+                                                <div class="form-check form-check-inline">
+                                                    <input class="form-check-input" type="radio" name="dateType" id="dateRange" value="range">
+                                                    <label class="form-check-label" for="dateRange">
+                                                        <i class="fas fa-calendar-week me-1"></i>Plage de dates
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- Date unique -->
+                                            <div id="singleDateContainer" class="date-container">
+                                                <input type="date" class="form-control form-control-lg" id="dateInput" name="date" required>
+                                            </div>
+                                            
+                                            <!-- Plage de dates -->
+                                            <div id="dateRangeContainer" class="date-container d-none">
+                                                <div class="row">
+                                                    <div class="col-md-6 mb-2">
+                                                        <label for="startDate" class="form-label">Date de début</label>
+                                                        <input type="date" class="form-control form-control-lg" id="startDate" name="start_date">
+                                                    </div>
+                                                    <div class="col-md-6 mb-2">
+                                                        <label for="endDate" class="form-label">Date de fin</label>
+                                                        <input type="date" class="form-control form-control-lg" id="endDate" name="end_date">
+                                                    </div>
+                                                </div>
+                                                <small class="text-muted">
+                                                    <i class="fas fa-info-circle me-1"></i>
+                                                    Les données seront importées pour chaque jour de la période sélectionnée
+                                                </small>
+                                            </div>
                                         </div>
                                         <div class="mb-4">
                                             <button type="submit" class="btn btn-primary py-3 mt-3">
                                                 <i class="fas fa-file-import me-2"></i> Lancer l'Import
                                             </button>
-                                            <button type="button" class="btn btn-danger py-3 mt-3" id="deleteButton">
+                                            <but
+                                            ton type="button" class="btn btn-danger py-3 mt-3" id="deleteButton">
                                                 <i class="fas fa-trash me-2"></i> Supprimer
                                         </div>
                                     </form>

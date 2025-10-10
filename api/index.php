@@ -1,5 +1,6 @@
 <?php
     require_once '../auth.php';
+    require_once '../database.php';
     
     // Vérifier l'authentification pour toutes les requêtes API
     if (!isLoggedIn()) {
@@ -27,8 +28,22 @@
     }
 
     function executeScript() {
+        global $userDB;
+        
         $script = $_POST['script'] ?? '';
         $arguments = $_POST['arguments'] ?? '';
+        $importDate = $_POST['date'] ?? null;
+        $groupId = $_POST['group'] ?? null;
+        $actionType = ($_POST['action'] ?? 'execute') === 'delete' ? 'delete' : 'execute';
+        
+        // Récupérer les informations de l'utilisateur connecté
+        $username = getUsername();
+        $userInfo = $userDB->getUserInfo($username);
+        
+        if (!$userInfo) {
+            echo json_encode(['success' => false, 'error' => 'Impossible de récupérer les informations utilisateur']);
+            return;
+        }
         
         if (!empty($_POST['date'])) {
             $arguments .= ' --date ' . escapeshellarg($_POST['date']);
@@ -48,13 +63,14 @@
             return;
         }
 
-        $scriptPath = '../scripts/' . $script . '/main.py';
+        $scriptPath = '../scripts/' . 'test' . '/main.py';
         if (!file_exists($scriptPath)) {
             echo json_encode(['success' => false, 'error' => 'Script non trouvé']);
             return;
         }
 
         // Construire la commande
+        $pythonExecutable = null;
         if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
             $pythonExecutable = realpath('../venv/Scripts/python.exe');
         } else {
@@ -75,34 +91,26 @@
         $returnVar = 0;
         exec($command . " 2>&1", $output, $returnVar);
 
-        // Enregistrer dans l'historique
-        $historyEntry = [
-            'timestamp' => date('Y-m-d H:i:s'),
-            'script' => $script,
-            'arguments' => $arguments,
-            'output' => implode("\n", $output),
-            'success' => $returnVar === 0
-        ];
-        saveToHistory($historyEntry);
+        $outputString = implode("\n", $output);
+        $success = $returnVar === 0;
+
+        // Enregistrer dans l'historique de la base de données
+        $saveResult = $userDB->saveImportHistory(
+            $userInfo['id'],
+            $username,
+            $script,
+            $arguments,
+            $outputString,
+            $success,
+            $importDate,
+            $groupId,
+            $actionType
+        );
 
         echo json_encode([
-            'success' => $returnVar === 0,
-            'output' => implode("\n", $output),
+            'success' => $success,
+            'output' => $outputString,
             'returnCode' => $returnVar
-        ]);
-    }
-
-    function saveToHistory($entry) {
-        $historyFile = '../history.json';
-        $history = [];
-        
-        if (file_exists($historyFile)) {
-            $history = json_decode(file_get_contents($historyFile), true) ?? [];
-        }
-        
-        array_unshift($history, $entry);
-        $history = array_slice($history, 0, 31); // Garder seulement les 31 dernières entrées
-        
-        file_put_contents($historyFile, json_encode($history, JSON_PRETTY_PRINT));
+        ], JSON_INVALID_UTF8_SUBSTITUTE);
     }
     ?>

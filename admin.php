@@ -111,11 +111,6 @@ $users = $userDB->getAllUsers();
                         </h4>
                     </div>
                     <div class="card-body">
-                        <div class="mb-4">
-                            <a href="index.php" class="btn btn-secondary">
-                                <i class="fas fa-arrow-left me-2"></i>Retour à l'application
-                            </a>
-                        </div>
                         
                         <?php if ($message): ?>
                             <div class="alert alert-<?php echo $messageType; ?> alert-dismissible fade show" role="alert">

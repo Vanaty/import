@@ -9,6 +9,6 @@ define('DEFAULT_ADMIN_PASSWORD', 'admin123');
 define('DB_PATH', __DIR__ . '/../data/users.db');
 
 // Autres configurations
-define('SESSION_TIMEOUT', 7200); // 2 heures en secondes
+define('SESSION_TIMEOUT', 28800); // 8 heures en secondes
 define('APP_NAME', 'Import App');
 ?>
